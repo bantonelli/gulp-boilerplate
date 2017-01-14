@@ -1,0 +1,10 @@
+{
+  "name": "gulp_learn",
+  "dependencies": {
+    "gulp": "registry:dt/gulp#3.8.0+20160916183637"
+  },
+  "globalDependencies": {
+    "gulp-load-plugins": "registry:dt/gulp-load-plugins#0.0.0+20160510010627",
+    "node": "registry:dt/node#7.0.0+20170110233017"
+  }
+}

@@ -1,0 +1,403 @@
+--------- INTRODUCTION
+    GULP: A task runner.
+        - Runs tasks that you define.
+            - Similar to 'npm run' scripts except with more features.
+            - Makes building tasks very easy.
+        - Enforces a Unix philosophy
+            - Can combine plugins 
+
+    GULP 3 VS. GULP 4:
+        - DIFFERENCES:
+            - They changed the way you define tasks and dependencies. 
+        - SIMILARITIES: 
+            - All plugins from gulp 3 will work with gulp 4
+            - All the underlying functionality
+
+    INSTALLATION: 
+        - Can install the CLI globally 
+            - Also install locally
+            - This way you can have local instances but you can trigger
+            the gulp command from anywhere.
+        - INSTALLING GULP 4:
+            - We have to install directly from the github repo because Gulp 4 
+            isn't released yet. (curr ver == 3.9.1)
+            
+            EXAMPLE SYNTAX: npm install <nameOfRepo>#<branch>
+                - This only works if you have git installed on system.  
+                    npm install gulpjs/gulp#4.0 --save-dev
+            
+                - You still have to install the cli globally
+                    - This allows you to run 'gulp' command in terminal. 
+                    npm install -g gulpjs/gulp-cli#4.0 
+
+
+
+--------- GULP & BABEL: OUR FIRST TASK 
+    - "default" task: the task that will run when you type gulp
+
+    - If you do not return a stream object, gulp never gets 
+    notified if the task completed.
+        - Will throw an error in this case.
+
+    - TASK COMPLETION:
+        - First way to signal that a task is completed is 
+        to accept a callback as a parameter to the task.
+            - And then use the callback.
+            
+        - Second way is to return a Stream object.
+            - In most cases you want to return a stream.
+            - Only certain (non-standard) plugins will require 
+            a callback. Most will use streams.
+
+    - gulp.src(<path>)
+        - Grabs a sources file and creates a readable stream of
+        it.
+            - <path>
+                - Can be string to specific file
+                    - Can also be an array of specific dirs.
+                - Can be glob pattern string
+                    - Can also be an array of glob patterns.
+            GLOB PATTERNS ASIDE:
+                - /**/ 
+                    - means search recursively within nested directories
+                - /*.js
+                    - means ANY filename with .js extension. 
+        - This readable stream can then be piped to another
+        stream (writeable stream).
+            - The writeable stream will most likely
+            process the data in some way. 
+
+
+    - gulp.dest(<path>)
+        - Creates a writeable stream to a destination 
+        directory.
+
+    - TRANSPILING: gulp-babel plugin
+        - Need the gulp-babel plugin 
+            - There are a whole bunch of gulp plugins. 
+            npm install gulp-babel --save-dev 
+        - Also need babel presets
+            npm install babel-preset-es2015 --save-dev
+        - And .babelrc file 
+            presets: [es2015]
+        - To transpile you need to pipe .src() to babel()
+            src('..').pipe(babel());
+
+
+--------- MULTIPLE TASKS & TASK DEPENDENCIES
+    - Generally a gulp task will follow gulp.src().pipe(gulp.dest) 
+    pattern
+    - Convention is to have all of your tasks run through the 
+    default task. 
+        - Basically you get a "FULL/Complete" build when you run
+        the default gulp task.  
+
+    REGISTERING TASKS:
+        - gulp --tasks
+            - Shows all registered tasks on local gulpfile.js
+        - Use gulp.task(<function>);
+            - This registers <function> as a gulp task
+
+    COMBINING TASKS:
+        - gulp.series():
+            - Order of tasks is the order they run in. 
+            - This is synchronous however.
+            EXAMPLE: 
+                gulp.task("default", 
+                    gulp.series(
+                        clean, 
+                        devStyles, 
+                        devScripts
+                    )
+                );
+        - gulp.parallel():
+            - Asynchronous process Everything runs at same time. 
+            - This is more performant and in line with Node Practice.
+            EXAMPLE: 
+                gulp.task("default", 
+                    gulp.parallel(
+                        clean, 
+                        devStyles, 
+                        devScripts
+                    )
+                );
+        - *** USE BOTH gulp.series() and gulp.parallel() in conjunction 
+        to specify how you want a nested task to run. 
+
+
+
+--------- STREAMS 
+    - READ Stream:
+        - Useful for reading data in chunks
+    - WRITE Stream:
+        - Useful for sending data in chunks
+
+    - STREAM EVENTS: .on('data'), .on('end')
+        - when you do .on("data", <callback>) the data won't
+        start being streamed until the event handler is added to
+        the event emitter.
+    - STREAM METHODS: .pipe(), .end()
+    - STREAM TYPES: read, write, transform
+
+    - PIPING STREAMS:
+        - A way to chain readable streams to writeable streams 
+        - Keeps memory usage down because you are passing small 
+        pieces of processed data at a time.
+
+        MODIFYING STREAM DATA DURING PIPE:
+            - We need to use the transform stream. 
+                - This is the type of stream used ALOT in gulp. 
+            - Instantiate transform
+                - pass in transform option in {options}
+                - transform should be an anonymous function 
+                with some logic.  
+
+
+
+--------- OBJECT STREAMS 
+
+    OBJECT STREAM: Stream that deals with objects instead of
+    plain strings or binary data. 
+
+    .push(): Method for pushing data onto a stream. 
+        - If you push 'null' onto readable it closes the stream.
+        Example: readStream.push(null) // signals end of stream.
+
+        - For TRANSFORM STREAMS you need to push() data onto
+        itself after it has transformed the chunk.
+            - If you don't push() it will never get sent further
+            along the pipe chain.  
+
+    .next(): signals that we are ready for next chunk.
+
+    BUILDING CUSTOM WRITEABLE STREAM:
+        - Instantiate: 
+            var stream = require('stream');
+            const writable = new stream.Writable({
+                write: function (chunk, encoding, next) {
+                    // logic 
+                }
+            });
+        - LOGIC FOR 'write' OPTION.
+            - This is where you can say what to do upon 
+            data being sent through the writable stream.
+            - Basically this is triggered on "data" events.
+            - The chunk is the current data chunk.
+
+    OBJECT MODE:
+        - Ability to push objects onto streams. 
+            - This is a feature used in Vinyl FS. 
+        - To work in object mode all streams being used have
+        to be set to object mode. 
+            - On stream instantiation pass 'objectMode: true'
+            to the {options} param.
+        - ACCESSING OBJECTS IN STREAM:
+            - The chunk will have properties of the object 
+            available to it. 
+            
+
+
+--------- VINYL FS 
+
+    VINYL FS: 
+        - It is a core piece of the Gulp system.
+        - The library is about sending files through an object stream 
+        so they can be worked on.   
+
+        INSTALLATION & USAGE: npm install vinyl-fs --save-dev 
+            - very similar to gulp API.
+            - Has same .src(), .dest(), and .pipe() methods.
+                - The behavior of these are identical
+            - When you pipe through transform streams the 
+            data that is passed are objects (instead of normal binary chunks)
+                - In this case file objects because we sourced 
+                from .js files.             
+                - This means there are properties you can access 
+                from those objects as they are being piped.
+                    *** TO SEE AVAILABLE PROPS OF FILE OBJECT:
+                        console.log(JSON.stringify(file));        
+            
+            STREAM MODE:  
+                - Have a file be read in as a stream and then 
+                transform it as a stream.
+                - More performant than buffered mode. 
+                - NOT ALL TRANSFORMS can be done through streams.
+                    - Example: minifying css file 
+                        - You have to have the entire file 
+                        loaded into memory.             
+
+            BUFFERED MODE:
+                - The entire file gets loaded in.
+                - In our examples we only covered buffered contents            
+
+    - Gulp.src creates a stream of objects that represent files
+        - This allows plugins to work on individual files. 
+        - This is different from just a stream of binary or strings.
+        
+        READING IN NORMAL FILE STREAMS WITH VINYLFS: 
+            - There is a package for doing this.
+
+            npm install vinyl-source-stream 
+                - Takes a normal text stream and turns it 
+                into a vinyl fs object.  
+                - Basically it is a transform stream. 
+                    - It takes a binary/string stream and transforms 
+                    it into a vinyl object. 
+
+        USING A PLUGIN THAT WORKS WITH BUFFERED FILES IN STREAM CONTEXT:
+            - npm install vinyl-buffer:
+                - Allows you to use transform/plugins that 
+                use Buffer() data. 
+                Example: Call the module function before you pipe to buffer-based
+                plugin/stream. 
+                    var buffer = require('vinyl-buffer');
+                    ...
+                    .pipe(buffer());
+                    ... 
+
+
+
+--------- COMMON GULP PLUGINS 
+- Gulp can be a task runner to do anything...
+    - Process files, perform tasks, etc.
+    - As long as their is a plugin for it gulp can do it.
+
+    GULP SOURCEMAPS: npm install gulp-sourcemaps --save-dev
+        - plugin used for generating sourcemaps on transpiled languages.
+        
+        USAGE:
+            var sourcemaps = require('gulp-sourcemaps');
+            - Before running transpiling scripts use: 
+                .pipe(sourcemaps.init())
+            - Then, after ALL transpiling & transformation pipes
+                .pipe(sourcemaps.write())
+
+    GULP AUTOPREFIXER: npm install gulp-autoprefixer --save-dev
+        - will automatically insert css browser prefixes where needed.
+
+        USAGE: 
+            var autoprefixer = require("gulp-autoprefixer");
+            - After you compile from Sass/Less use:
+                .pipe(autoprefixer({
+                    browsers: ["last 2 versions"]
+                })) 
+            *** Put sourcemaps.write() after you run autoprefixer
+
+    GULP LOADPLUGINS: npm install gulp-load-plugins --save-dev
+        - will look in package.json and finds all gulp plugins 
+        
+        - So instead of requiring in all gulp plugins manually you 
+        just call it at the top of your file and it will attach all
+        modules to one base object.
+            
+            EXAMPLE: 
+                var gulp = require("gulp");
+                var $ = require("gulp-load-plugins")(); // have to call right away
+                ...
+                .pipe($.sourcemaps.init()) // access plugins through '$'
+                .pipe($.sass()) // plugin names are same as package w/o "gulp-"
+                ...
+                
+             
+
+--------- PRODUCTION BUILDS
+- Processing files in a way that is appropriate for 
+production.
+
+DURING DEVELOPMENT: 
+    - Split up files
+    - Files not minified
+
+PRODUCTION BUILD:
+    - Combined/single file
+    - Minified files/uglified files 
+        - Takes a little longer to create minified files. 
+        - This is fine for production though. 
+
+    GULP-IF: Plugin that helps differentiate build systems
+        - useful to separate development from production logic.
+        
+        INSTALLATION AND USAGE: npm install gulp-if --save-dev
+
+    GULP MINIFY CSS: Plugin that minifies css files. 
+        INSTALLATION AND USAGE: npm install gulp-minify-css --save-dev 
+
+    GULP UGLIFY JS: npm install gulp-uglify --save-dev
+        - Minifies JS scripts 
+
+    GULP CONCAT: npm install gulp-concat --save-dev
+        - Concatenates JS script files. 
+    
+    - OVERALL IDEAS:
+        - Pass isProduction boolean to task functions
+            - OR create separate production tasks entirely.
+        - Src --> babel --> concat --> uglify --> Dest
+        - NO SOURCEMAPS FOR PROD BUILDS 
+        - Setup config vars where applicable. 
+            - Could set up an object that holds config vars 
+            - This object could be defined at top of file.  
+        
+
+
+--------- WATCH AND LIVERELOAD (IN GULP)
+- These things speed up workflow...
+    CREATING A WATCH TASK:
+        - Create a watch function normally
+        - Then to enable watch, just use: 
+            gulp.watch(<path>, gulp.series(<task>));
+            - <task> --> just a task function you write
+            - <path> --> glob string of directory to watch
+
+    GULP LIVERELOAD: npm install gulp-livereload --save-dev
+        - During watch task you need to start livereload server
+            // inside watch function
+            livereload.listen();
+        - Then we need to add to the stream pipes.
+            - At the end of the styles pipe use:
+                .pipe(livereload()); 
+        USAGE: 
+            - You have to have files served by a server 
+            - You have to have the chrome extension enabled
+            - You have to have the gulp watch task running
+    
+    HOW IT WORKS:
+        "HOT RELOADS":
+            - With CSS livereload "hot reloads" 
+                - This means it doesn't have to refresh the 
+                entire page
+            - This isn't the case with scripts out-the-box 
+                - It has to reload the page for JS. 
+
+**** GULP OPTIMIZATIONS:
+    - use gulp-cache plugin for file watching. 
+    - improves performance because it only updates what files have 
+    changed. 
+        - DON'T WANT TO RECOMPILE EVERYTHING IF YOU ONLY CHANGED 1 THING!
+    - Other option is to use "incremental builds" 
+
+
+
+--------- ORGANIZATION
+- Their are strategies for further organizing the gulp tasks. 
+    - Such as breaking up the gulpfile into other files. 
+
+    MANUAL APPROACH:
+        - Simply break up the JS file and require in the modules
+        - Strategies for separating could be:
+            - Separate by file type (HTML tasks, CSS tasks, etc.)
+            - Separate each task into a separate file. 
+            - Etc.  
+
+    REQUIREDIR (PACKAGE):  
+        - Point it to a directory and it imports all the node 
+        modules in that directory. 
+            - Still have to manually separate code 
+            - It just requires everything in for you 
+                - Kind of like gulp-load-plugins 
+        
+    *** RECOMMENDED SEPARATION APPROACH:
+        - default.js --> contains watch logic         
+        - config.js --> contains config object
+        - scripts.js --> contains script logic 
+        - styles.js --> contains sass/css logic 
+
